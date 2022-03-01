@@ -32,11 +32,45 @@ async function postNewMsg(user, text) {
 }
 
 async function getNewMsgs() {
-  /*
-   *
-   * code goes here
-   *
-   */
+  let reader;
+  const uft8decoder = new TextDecoder('utf-8');
+
+  try {
+    const res = await fetch('/msgs');
+    reader = res.body.getReader(); // turns reader into a readable text stream, since we set up the backend this way
+  } catch (err) {
+    console.log("reader connection error ", + err);
+  }
+
+  presence.innerHTML = 'OK';
+
+  let readerResponse;
+  let done;
+
+  do {
+    try {
+      readerResponse = await reader.read(); // wait here until the API sends me something new back
+    } catch (err) {
+      console.log('reader fail ' + err);
+      presence.innerHTML = 'FAIL';
+      return;
+    }
+
+    const chunk = uft8decoder.decode(readerResponse.value, { stream: true });
+    done = readerResponse.done;
+
+    if (chunk) {
+      try {
+        const json = JSON.parse(chunk);
+        allChat = json.msg;
+        render()
+      } catch (err) {
+        console.error('parse error ', + err)
+      }
+    }
+
+  } while(!done);
+  presence.innerHTML = 'FAIL';
 }
 
 function render() {
